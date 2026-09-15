@@ -1,0 +1,12 @@
+# Deployment is "publish these files"; there is no build step and there should
+# not become one. If this file grows a [build] section, ask why.
+
+[build]
+	publish = "."
+
+[[headers]]
+	for = "/*"
+	[headers.values]
+		X-Content-Type-Options = "nosniff"
+		Referrer-Policy = "strict-origin-when-cross-origin"
+		X-Frame-Options = "SAMEORIGIN"

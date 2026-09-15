@@ -1,0 +1,102 @@
+/*
+	vilhelmcarlstrom.com — the holding page.
+
+	The palette is the feed's: see Strategic/Outreach/assets/colourmap.py, which
+	builds and validates the ramp. The two ends of that ramp are the page's ground
+	and its brightest text, so the page and the field it sits on are one system.
+*/
+
+:root {
+	--ground: #011520;
+	--text: #f4ebd1;
+	--body: #cfd3cc;
+	--muted: #8d968f;
+	--faint: #5f6a64;
+	--rule: #123338;
+	--link: #7eb06c;
+	--link-hover: #bbca89;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { height: 100%; }
+
+body {
+	margin: 0;
+	background: var(--ground);
+	color: var(--text);
+	font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+	-webkit-font-smoothing: antialiased;
+}
+
+#field { position: fixed; inset: 0; width: 100%; height: 100%; display: block; z-index: 0; }
+
+#scrim {
+	position: fixed; inset: 0; z-index: 1; pointer-events: none;
+	background:
+		linear-gradient(100deg, rgba(1,21,32,0.94) 0%, rgba(1,21,32,0.87) 30%, rgba(1,21,32,0.34) 62%, rgba(1,21,32,0.06) 100%),
+		radial-gradient(70% 55% at 100% 100%, rgba(1,21,32,0.72) 0%, rgba(1,21,32,0) 70%),
+		radial-gradient(120% 90% at 8% 40%, rgba(1,21,32,0.55) 0%, rgba(1,21,32,0) 60%);
+}
+
+main {
+	position: relative; z-index: 2;
+	min-height: 100%;
+	display: flex; align-items: center;
+	padding: 64px clamp(20px, 7vw, 108px);
+	pointer-events: none;			/* the field stays reachable behind the text */
+}
+main a { pointer-events: auto; }
+
+.block { display: flex; flex-direction: column; gap: 30px; max-width: 640px; }
+header { display: flex; flex-direction: column; gap: 14px; }
+
+h1 {
+	margin: 0;
+	font-family: Newsreader, Georgia, 'Times New Roman', serif; font-weight: 300;
+	font-size: clamp(38px, 6.2vw, 62px); line-height: 1.02; letter-spacing: -0.015em;
+	color: var(--text);
+}
+
+.role { margin: 0; font-size: 12px; letter-spacing: 0.10em; text-transform: uppercase; color: var(--muted); line-height: 1.85; }
+
+.sentence {
+	margin: 0; font-family: Newsreader, Georgia, 'Times New Roman', serif;
+	font-size: clamp(18px, 2.2vw, 23px); line-height: 1.5; color: var(--body);
+	max-width: 30em; text-wrap: pretty;
+}
+
+.rule { height: 1px; width: 120px; background: var(--rule); }
+
+.record { display: flex; flex-direction: column; gap: 11px; margin: 0; font-size: 13px; line-height: 1.55; }
+.row { display: flex; gap: 18px; }
+.row dt { color: var(--faint); width: 96px; flex-shrink: 0; }
+.row dd { margin: 0; color: #b9beb7; }
+
+a { color: var(--link); text-decoration: none; }
+a:hover, a:focus-visible { color: var(--link-hover); text-decoration: underline; text-underline-offset: 3px; }
+em { font-family: Newsreader, Georgia, serif; font-style: italic; }
+
+footer {
+	position: fixed; z-index: 2; right: clamp(16px, 3vw, 34px); bottom: clamp(14px, 2.4vw, 26px);
+	display: flex; align-items: center; gap: 14px;
+	font-size: 11px; line-height: 1.6; letter-spacing: 0.04em;
+	color: rgba(244,235,209,0.62); text-align: right;
+	background: rgba(1,21,32,0.66); backdrop-filter: blur(7px);
+	padding: 10px 12px;
+}
+footer p { margin: 0; max-width: 34ch; }
+
+#toggle {
+	font: inherit; letter-spacing: 0.04em; color: rgba(244,235,209,0.6);
+	background: transparent; border: 1px solid rgba(244,235,209,0.22);
+	padding: 5px 9px; cursor: pointer; white-space: nowrap;
+}
+#toggle:hover, #toggle:focus-visible { color: var(--text); border-color: rgba(244,235,209,0.5); }
+
+@media (max-width: 720px) {
+	main { align-items: flex-end; padding-bottom: 190px; }
+	#scrim { background: linear-gradient(180deg, rgba(1,21,32,0.30) 0%, rgba(1,21,32,0.86) 42%, rgba(1,21,32,0.97) 100%); }
+	footer { left: clamp(16px, 3vw, 34px); justify-content: space-between; }
+	.row { flex-direction: column; gap: 3px; }
+	.row dt { width: auto; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
+}

@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Vilhelm Carlström</title>
+<meta name="description" content="Vilhelm Carlström — PhD Fellow at the Royal Danish Academy, Institute of Architecture and Technology. Architecture, pedagogy and modelling.">
+<link rel="canonical" href="https://vilhelmcarlstrom.com/">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+
+<meta property="og:type" content="profile">
+<meta property="og:title" content="Vilhelm Carlström">
+<meta property="og:description" content="PhD Fellow, Royal Danish Academy — Institute of Architecture and Technology. Architecture, pedagogy and modelling.">
+<meta property="og:url" content="https://vilhelmcarlstrom.com/">
+<meta property="og:image" content="https://vilhelmcarlstrom.com/og.jpg">
+<meta name="twitter:card" content="summary_large_image">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,300;6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<canvas id="field" aria-hidden="true"></canvas>
+<div id="scrim"></div>
+
+<main>
+	<div class="block">
+		<header>
+			<h1>Vilhelm Carlström</h1>
+			<p class="role">PhD Fellow · Royal Danish Academy<br>Institute of Architecture and Technology</p>
+		</header>
+
+		<p class="sentence">Architecture, pedagogy and modelling. I work on how dynamic simulation becomes an instrument of design — at present for creative biofabrication.</p>
+
+		<div class="rule"></div>
+
+		<dl class="record">
+			<div class="row">
+				<dt>Publication</dt>
+				<dd>Carlström, Rigobello &amp; Ayres (2024), <em>Research Directions: Biotechnology Design</em> · <a href="https://doi.org/10.1017/btd.2024.10">doi</a></dd>
+			</div>
+			<div class="row">
+				<dt>Record</dt>
+				<dd><a href="https://orcid.org/0009-0006-4417-5701">ORCID</a> · <a href="https://github.com/VilhelmC">GitHub</a></dd>
+				<!-- Add Google Scholar here once the profile exists. A dead link is worse than an absent one. -->
+			</div>
+			<div class="row">
+				<dt>Elsewhere</dt>
+				<dd><a href="https://instagram.com/vilhelmc">Instagram</a> · <a href="https://www.linkedin.com/in/vilhelmcarlstrom/">LinkedIn</a></dd>
+				<!-- Check the LinkedIn slug matches the one set in your profile settings. -->
+			</div>
+			<div class="row">
+				<dt>Contact</dt>
+				<dd><a href="mailto:cham@kglakademi.dk">cham@kglakademi.dk</a></dd>
+			</div>
+		</dl>
+	</div>
+</main>
+
+<footer>
+	<p id="caption">A growth field under projected inhibition, running live. Control gain varies across the screen, controller response time down it. The cursor plants growth.</p>
+	<button id="toggle" type="button" aria-pressed="false">Pause</button>
+</footer>
+
+<script type="module">
+	import { mount } from "./field.js";
+	mount({
+		canvas: document.getElementById("field"),
+		scrim: document.getElementById("scrim"),
+		toggle: document.getElementById("toggle"),
+		caption: document.getElementById("caption"),
+	});
+</script>
+</body>
+</html>
