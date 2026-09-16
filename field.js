@@ -179,6 +179,14 @@ export function mount(els) {
 	// The substrate's time step. DTB is the ceiling the scheme allows; the page runs
 	// at half of it, because the medium reads better when it is not hurrying.
 	const DT0 = DTB / 2;
+	// Playback speed. Half, so the target is 780 substeps a second: reachable by
+	// anything holding 10 fps, and therefore the same on a laptop that struggles and
+	// a phone that does not. A rate only good hardware reaches is not consistent,
+	// it is just fast where the hardware is.
+	const SPEED0 = 0.5;
+	// What reduced motion sets it to instead. Visible on the slider, not hidden
+	// behind it.
+	const SPEED_REDUCED = SPEED0 / 6;
 	// The regime the zone holds to, in band coordinates. Low xi is the unsettled
 	// end of the crescent; eta 0.72 is off the centreline toward the upper edge.
 	const TGT_XI = 0.145, TGT_ETA = 0.72;
@@ -689,7 +697,7 @@ export function mount(els) {
 	// The controller's setpoint and reach. `xi`/`eta` name the pattern being held
 	// to, in band coordinates: xi runs along the crescent, eta across it.
 	const cursor = { swell: SWELL, swellR: SWELL_R, pushAmt: PUSH_AMT, pushR: PUSH_R,
-		pushTime: PUSH_TIME, xi: TGT_XI, eta: TGT_ETA, dt: DT0, speed: 1 };
+		pushTime: PUSH_TIME, xi: TGT_XI, eta: TGT_ETA, dt: DT0, speed: SPEED0 };
 	// The press ramp. 0 at rest, eased toward 1 while the button is down and back
 	// down on release, so the edit arrives and leaves rather than switching.
 	let pressRamp = 0, lastT = performance.now();
@@ -717,7 +725,11 @@ export function mount(els) {
 	mount.dtMax = () => DTB;
 	// Measured, not nominal: frames per second, substeps per second, and the rate
 	// the page would run at on a display fast enough to keep up.
-	mount.rates = () => ({ fps, sps, nominal: stepRate(), slow: slowMo, qual, res: [BW, BH] });
+	mount.rates = () => ({ fps, sps, nominal: stepRate(), qual, res: [BW, BH],
+		grid: gridScale(),
+		// Whether the BROWSER is asking for reduced motion, which is a fact about the
+		// browser and stays true whatever the slider has since been moved to.
+		asksReduced: reduced.matches, speed: cursor.speed, defaultSpeed: SPEED0 });
 	mount.getSplines = () => JSON.parse(JSON.stringify(bandSplines));
 	// Live editing. reseed:false keeps the running field and lets it migrate to the
 	// new parameters, which is the more informative thing to watch.
@@ -889,19 +901,39 @@ export function mount(els) {
 	// yours. It is NOT the time step -- dt changes the dynamics the integrator is
 	// approximating, and a smaller one is a different trajectory, not the same one
 	// watched slowly. This is the same trajectory watched slowly.
-	const stepRate = () => STEPS_PER_SEC * cursor.speed * (slowMo ? 1 / 6 : 1);
-	// The most one frame may take, scaled with the speed so asking for more than
-	// full rate can actually be delivered. Anything at or above 30 fps reaches the
-	// rate asked for; below that the medium slows rather than stuttering.
-	const maxReps = () => Math.ceil(B_SUBSTEPS * 2 * Math.max(1, cursor.speed));
+	//
+	// Reduced motion no longer multiplies this behind the slider's back. It sets the
+	// slider LOWER at startup instead, so there is one number, it is visible, and
+	// moving it overrides the setting the way a person overriding a default should.
+	//
+	// GRID CORRECTION. The pattern's wavelength is fixed in TEXELS -- about eight --
+	// so on a 275-wide grid a feature is nearly twice the fraction of the screen it
+	// is on a 500-wide one, and its characteristic time is a fixed number of
+	// substeps either way. The same substeps per second therefore carries a feature
+	// across twice as much screen: a coarse grid READS AS FASTER even though nothing
+	// about the medium changed. That is why the more capable machine looked slower
+	// than the phone -- it was the only one keeping a fine grid. Rate is scaled by
+	// the grid so apparent speed, which is what anyone actually judges, matches.
+	const BW_REF = 500;
+	const gridScale = () => (BW || BW_REF) / BW_REF;
+	const stepRate = () => STEPS_PER_SEC * cursor.speed * gridScale();
+	// The most one frame may take, scaled with the speed so asking for more than the
+	// default rate can actually be delivered. At three nominal frames' worth, the
+	// DEFAULT rate is reachable by anything holding 10 fps -- which is the point:
+	// consistency across machines is only possible at a rate the slowest of them can
+	// sustain, and a target only a fast machine reaches is not a target, it is a
+	// description of the fast machine.
+	const maxReps = () => Math.ceil(B_SUBSTEPS * 3 * Math.max(1, cursor.speed));
 	let owed = 0;
 	let fps = 0, sps = 0, fpsAcc = 0, fpsN = 0, stepAcc = 0, lowFor = 0;
 
 	function frame() {
 		raf = 0;
-		if (slowMo) {
-			// Fewer frames as well as fewer steps: there is no point redrawing at
-			// 120 Hz a picture that is deliberately barely moving.
+		// Fewer frames as well as fewer steps -- there is no point redrawing at 120 Hz
+		// a picture that is deliberately barely moving. Only while the speed is still
+		// near what reduced motion set it to: someone who has raised it has overridden
+		// the setting, and throttling them to 10 fps would just make it chunky.
+		if (slowMo && cursor.speed <= SPEED_REDUCED * 1.5) {
 			const t = performance.now();
 			if (t < nextAt) {
 				if (running && !document.hidden) raf = requestAnimationFrame(frame);
@@ -1032,9 +1064,10 @@ export function mount(els) {
 		// actually asking for: the frame rate falls by a factor of ten, and because
 		// the substrate advances per FRAME, so does everything it does.
 		setSlow(true);
+		cursor.speed = SPEED_REDUCED;
 		// Appended, not substituted: what the page is showing does not change just
 		// because it is showing it slowly.
-		if (caption) caption.textContent += " It is running at a sixth of the frame rate, because this browser asks for reduced motion.";
+		if (caption) caption.textContent += " It is running at a sixth speed, because this browser asks for reduced motion; the controls can override that.";
 	} else { kick(); }
 
 	function fallback() {

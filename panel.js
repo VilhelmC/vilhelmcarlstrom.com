@@ -567,11 +567,28 @@ export function panel(field) {
 		if ($("fp-rate").offsetParent === null) return;
 		const r = field.rates();
 		const pc = r.nominal ? Math.round(100 * r.sps / r.nominal) : 0;
-		$("fp-rate").innerHTML = "<b>" + r.fps.toFixed(0) + "</b> frames/s · <b>"
-			+ r.sps.toFixed(0) + "</b> substeps/s, " + pc + "% of full rate"
-			+ (r.slow ? " (reduced motion: full rate is itself a sixth)" : "")
-			+ (r.qual < 1 ? " · resolution reduced to " + Math.round(r.qual * 100) + "% to buy frames" : "")
-			+ (pc < 92 ? " — this machine cannot keep up, so the medium runs slow rather than stuttering." : "");
+		// Everything that can make two machines disagree, on one line, always --
+		// including when nothing is wrong. A number that only appears when it is
+		// abnormal cannot be compared against a machine where it is normal.
+		const bits = ["speed <b>" + r.speed.toFixed(2) + "</b>",
+			"<b>" + r.sps.toFixed(0) + "</b> substeps/s (" + pc + "% of asked)",
+			"<b>" + r.fps.toFixed(0) + "</b> fps",
+			"grid <b>" + r.res[0] + "×" + r.res[1] + "</b>"
+				+ (r.qual < 1 ? " (lowered to buy frames)" : "")];
+		let out = bits.join(" · ");
+		// The one number that decides whether two machines agree. If both reach 100%
+		// they are running the same medium at the same rate, whatever their hardware.
+		if (pc < 92) out += " — cannot reach that rate; lower <b>speed</b> until it reads 100%.";
+		if (r.asksReduced) out += "<br>This browser asks for <b>reduced motion</b>, so speed started at "
+			+ (r.defaultSpeed / 6).toFixed(3) + " rather than " + r.defaultSpeed
+			+ " — a sixth. That is a browser setting, not the hardware, and it is the"
+			+ " usual reason two machines disagree. The slider overrides it.";
+		out += "<br>The pattern's wavelength is fixed in grid cells, so a coarser grid puts"
+			+ " bigger features on the screen and the same rate carries them further per second."
+			+ " The rate is scaled by the grid to compensate — here by <b>"
+			+ r.grid.toFixed(2) + "×</b> — so that two machines with different grids still"
+			+ " look the same speed. Compare <b>speed</b> between machines; the rest follows.";
+		$("fp-rate").innerHTML = out;
 	}, 600);
 
 	$("fp-seed").addEventListener("click", () => field.reseed());
