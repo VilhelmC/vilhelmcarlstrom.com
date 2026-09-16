@@ -859,14 +859,24 @@ export function mount(els) {
 		gl.drawArrays(gl.TRIANGLES, 0, 3);
 	}
 
+	// Reduced motion no longer stops the page, so it starts running either way.
 	const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
-	let running = !reduced.matches, raf = 0, pendingResize = false;
-	// Frames still owed to the reduced-motion settle. Counted down in frame(), which
-	// keeps looping while it is positive even though `running` is false.
-	let settleLeft = 0;
+	let running = true, raf = 0, pendingResize = false;
+	// Reduced motion: keep running, but at a sixth of the frame rate. The substrate
+	// steps per FRAME, so this slows the medium as well as the picture.
+	let slowMo = false, nextAt = 0;
+	const SLOW_MS = 1000 / 6;
 
 	function frame() {
 		raf = 0;
+		if (slowMo) {
+			const t = performance.now();
+			if (t < nextAt) {
+				if (running && !document.hidden) raf = requestAnimationFrame(frame);
+				return;
+			}
+			nextAt = t + SLOW_MS;
+		}
 		if (pendingResize) { resize(); pendingResize = false; }
 		// Ease the press toward 1 while held and back to 0 on release, on ELAPSED
 		// time rather than frames. A per-frame factor would tie the feel of the
@@ -880,22 +890,32 @@ export function mount(els) {
 		if (seedNext) { stepAll(true); seedNext = false; }
 		stepAll(false);
 		present();
-		if (settleLeft > 0) settleLeft--;
-		if ((running || settleLeft > 0) && !document.hidden) raf = requestAnimationFrame(frame);
+		if (running && !document.hidden) raf = requestAnimationFrame(frame);
 	}
 	const kick = () => {
-		if (!raf && (running || settleLeft > 0) && !document.hidden) raf = requestAnimationFrame(frame);
+		if (!raf && running && !document.hidden) raf = requestAnimationFrame(frame);
 	};
 
 	window.addEventListener("resize", () => { pendingResize = true; kick(); }, { passive: true });
 	document.addEventListener("visibilitychange", kick);
 
+	// Two glyphs rather than two words: the control is the same one every video
+	// player has, and a word has to be read and translated first.
+	const ICON_PAUSE = '<svg viewBox="0 0 12 12" aria-hidden="true"><rect x="1.5" y="1" width="3" height="10" rx=".4"/><rect x="7.5" y="1" width="3" height="10" rx=".4"/></svg>';
+	const ICON_PLAY = '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2.5 1.2 10.6 6 2.5 10.8Z"/></svg>';
+	function paintToggle() {
+		if (!toggle) return;
+		toggle.innerHTML = running ? ICON_PAUSE : ICON_PLAY;
+		toggle.setAttribute("aria-pressed", String(!running));
+		toggle.setAttribute("aria-label", running ? "Pause the background" : "Run the background");
+		toggle.title = running ? "Pause" : "Run";
+	}
 	function setRunning(on) {
 		running = on;
-		if (on) settleLeft = 0;
-		if (toggle) { toggle.textContent = on ? "Pause" : "Run"; toggle.setAttribute("aria-pressed", String(!on)); }
+		paintToggle();
 		if (on) kick();
 	}
+	paintToggle();
 	if (toggle) toggle.addEventListener("click", () => setRunning(!running));
 
 	// Copy the current frame to the clipboard as a PNG. The backbuffer is not
@@ -939,17 +959,19 @@ export function mount(els) {
 	}
 
 	resize();
+	const setSlow = (on) => { slowMo = on; nextAt = 0; kick(); };
+	reduced.addEventListener("change", e => setSlow(e.matches));
 	if (reduced.matches) {
-		// Settle to a still image, then hold. This used to run 140 steps in ONE
-		// synchronous burst -- 3640 full-screen shader passes before the page could
-		// paint, on top of the volume build. On a phone that is the whole load time,
-		// and the page then arrived paused with no sign that it could be started.
-		// Spread over frames instead: the picture develops in front of you and the
-		// thread is never held.
-		settleLeft = 140;
-		setRunning(false);
-		kick();
-		if (caption) caption.textContent = "A substrate steered by a controller, settling and then held still because this browser asks for reduced motion. Press Run to let it move.";
+		// Reduced motion used to mean: settle, then stop. Stopping is the heaviest
+		// reading of the setting, and it left the page looking broken -- a still
+		// image with a play button, arrived at after a visible delay. Slowing it
+		// down instead keeps the page alive and honours what the setting is
+		// actually asking for: the frame rate falls by a factor of ten, and because
+		// the substrate advances per FRAME, so does everything it does.
+		setSlow(true);
+		// Appended, not substituted: what the page is showing does not change just
+		// because it is showing it slowly.
+		if (caption) caption.textContent += " It is running at a sixth of the frame rate, because this browser asks for reduced motion.";
 	} else { kick(); }
 
 	function fallback() {

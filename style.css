@@ -92,6 +92,9 @@ footer {
 	font-size: 11px; line-height: 1.6; letter-spacing: 0.04em;
 	color: rgba(243,236,230,0.62); text-align: right;
 }
+/* An author `display` beats the UA rule for [hidden], so the attribute alone does
+   not hide this. Same trap as `canvas[hidden]`. */
+#about[hidden] { display: none; }
 #about {
 	display: flex; flex-direction: column; align-items: flex-end; gap: 9px;
 	background: rgba(4,5,10,0.72); backdrop-filter: blur(7px); padding: 11px 13px;
@@ -106,7 +109,9 @@ footer button {
 	border: 1px solid rgba(243,236,230,0.22);
 	padding: 6px 10px; cursor: pointer; white-space: nowrap;
 }
-#help { width: 32px; padding: 6px 0; text-align: center; }
+#help, #toggle { width: 34px; height: 30px; padding: 0; display: inline-flex;
+	align-items: center; justify-content: center; }
+#toggle svg { width: 13px; height: 13px; display: block; fill: currentColor; }
 footer button:hover, footer button:focus-visible { color: var(--text); border-color: rgba(243,236,230,0.5); }
 
 @media (max-width: 720px) {
