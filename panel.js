@@ -57,7 +57,8 @@ const CSS = `
 #fp-key { display:flex; flex-wrap:wrap; gap:9px; font-size:9px; margin:6px 0 0;
 	color:rgba(243,236,230,.5); }
 #fp-key i { display:inline-block; width:10px; height:3px; vertical-align:middle; margin-right:4px; }
-#fp-cov b { color:#e7c489; font-weight:400; }
+#fp-cov b, #fp-rate b { color:#e7c489; font-weight:400; }
+#fp-rate { font-size:10.5px; }
 #fp-prev { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; margin:0 0 6px; }
 #fp-prev figure { margin:0; }
 #fp-prev canvas { width:100%; aspect-ratio:3/2; display:block;
@@ -192,10 +193,13 @@ export function panel(field) {
 			target is the orange cross on the f, k map, and it is draggable there.</p>
 			<div id="fp-cursor"></div>
 			<h2>Time</h2>
-			<p>The substrate's step. The page runs at half the largest the scheme
-			allows, because the medium reads better when it is not hurrying — and
-			the slider's top is that bound, not a preference.</p>
+			<p><b>Speed</b> is playback: how much of the medium's own time passes per
+			second of yours. The <b>step</b> is not — it is what the integrator is
+			approximating with, and a smaller one is a different trajectory rather
+			than the same one watched slowly. Its top is the scheme's stability bound,
+			not a preference.</p>
 			<div id="fp-dt"></div>
+			<p id="fp-rate" style="margin-top:8px"></p>
 			<h2>Ground</h2>
 			<div id="fp-tone"></div>
 			<button class="act" id="fp-seed">Reseed the substrate</button>
@@ -295,8 +299,10 @@ export function panel(field) {
 	// tone, if the build exposes a getter for it
 	// The field lightens continuously but the page's ink has to flip, so it flips
 	// at the crossing rather than at an arbitrary threshold.
-	if (field.dtMax) rows($("fp-dt"), [["dt", "time step", 0.02, field.dtMax(), 0.005, 3]],
-		k => field.getCursor()[k], (k, v) => { field.setCursor({ dt: v }); save(); });
+	if (field.dtMax) rows($("fp-dt"), [
+		["speed", "speed ×", 0.02, 2, 0.02, 2],
+		["dt", "time step", 0.02, field.dtMax(), 0.005, 3],
+	], k => field.getCursor()[k], (k, v) => { field.setCursor({ [k]: v }); save(); });
 	else $("fp-dt").previousElementSibling.hidden = true;
 
 	const lit = v => document.body.classList.toggle("lit", v > 0);
@@ -552,6 +558,21 @@ export function panel(field) {
 		} catch { /* the field owns the context; a lost frame is not fatal */ }
 	}
 	setInterval(drawPrev, 500);
+
+	// The rate the medium is actually getting, against the rate it is asking for.
+	// Evolution is now in real time, so a machine that cannot keep up runs SLOW
+	// rather than jerky -- and this line is where that shows, instead of being a
+	// thing you infer from the picture.
+	if (field.rates) setInterval(() => {
+		if ($("fp-rate").offsetParent === null) return;
+		const r = field.rates();
+		const pc = r.nominal ? Math.round(100 * r.sps / r.nominal) : 0;
+		$("fp-rate").innerHTML = "<b>" + r.fps.toFixed(0) + "</b> frames/s · <b>"
+			+ r.sps.toFixed(0) + "</b> substeps/s, " + pc + "% of full rate"
+			+ (r.slow ? " (reduced motion: full rate is itself a sixth)" : "")
+			+ (r.qual < 1 ? " · resolution reduced to " + Math.round(r.qual * 100) + "% to buy frames" : "")
+			+ (pc < 92 ? " — this machine cannot keep up, so the medium runs slow rather than stuttering." : "");
+	}, 600);
 
 	$("fp-seed").addEventListener("click", () => field.reseed());
 	$("fp-reset").addEventListener("click", () => {

@@ -604,6 +604,11 @@ export function mount(els) {
 		bandAT = bandTex(A); bandBT = bandTex(B);
 	}
 
+	// Resolution quality, 1 = full. Lowered once or twice if the machine cannot hold
+	// a frame rate; the substrate's cost is quadratic in this, so 0.75 is about half
+	// the work. Never raised again: a page that oscillates between two resolutions
+	// is worse than one that settled on the lower.
+	let qual = 1;
 	let AW_ = 0, AH = 0, BW = 0, BH = 0;
 	let aT = [], aF = [], bT = [], bF = [], auxT = [], auxF = [], af = 0, bf = 0, seedNext = true;
 
@@ -612,7 +617,7 @@ export function mount(els) {
 		const dpr = Math.min(window.devicePixelRatio || 1, 2);
 		canvas.width = Math.round(cw * dpr); canvas.height = Math.round(ch * dpr);
 		const small = window.innerWidth < 720;
-		const bBudget = small ? 320 : 500, aBudget = small ? 112 : 176;
+		const bBudget = Math.round((small ? 320 : 500) * qual), aBudget = small ? 112 : 176;
 		const ar = cw / ch;
 		// The noise lattice is built for ONE aspect: a cell is square on screen only
 		// at the aspect it was built for. A materially different one has to rebuild,
@@ -624,6 +629,7 @@ export function mount(els) {
 		const dims = (b) => ar >= 1 ? [Math.round(b), Math.round(b / ar)] : [Math.round(b * ar), Math.round(b)];
 		const [bw, bh] = dims(bBudget), [aw, ah] = dims(aBudget);
 		if (bw === BW && bh === BH) { buildVolume(); return; }
+		// (a quality change alters bw/bh, so it falls through here by construction)
 		BW = bw; BH = bh; AW_ = aw; AH = ah;
 		[...aT, ...bT, ...auxT].forEach(t => gl.deleteTexture(t));
 		[...aF, ...bF, ...auxF].forEach(f => gl.deleteFramebuffer(f));
@@ -683,7 +689,7 @@ export function mount(els) {
 	// The controller's setpoint and reach. `xi`/`eta` name the pattern being held
 	// to, in band coordinates: xi runs along the crescent, eta across it.
 	const cursor = { swell: SWELL, swellR: SWELL_R, pushAmt: PUSH_AMT, pushR: PUSH_R,
-		pushTime: PUSH_TIME, xi: TGT_XI, eta: TGT_ETA, dt: DT0 };
+		pushTime: PUSH_TIME, xi: TGT_XI, eta: TGT_ETA, dt: DT0, speed: 1 };
 	// The press ramp. 0 at rest, eased toward 1 while the button is down and back
 	// down on release, so the edit arrives and leaves rather than switching.
 	let pressRamp = 0, lastT = performance.now();
@@ -699,7 +705,7 @@ export function mount(els) {
 		// the swell off, so there is nothing above it worth offering.
 		const lim = { pushAmt: [0, 1], swellR: [0.005, 3], pushR: [0.005, 3],
 			pushTime: [0.02, 6], swell: [0.05, 16], xi: [0, 1], eta: [0, 1],
-			dt: [0.02, DTB] };
+			dt: [0.02, DTB], speed: [0.02, 2] };
 		for (const k in lim) if (o[k] !== undefined)
 			cursor[k] = Math.max(lim[k][0], Math.min(lim[k][1], +o[k]));
 		if (!running) present();
@@ -709,6 +715,9 @@ export function mount(els) {
 	// The scheme's own ceiling on dt, so a control can be built against it rather
 	// than against a number copied out of here.
 	mount.dtMax = () => DTB;
+	// Measured, not nominal: frames per second, substeps per second, and the rate
+	// the page would run at on a display fast enough to keep up.
+	mount.rates = () => ({ fps, sps, nominal: stepRate(), slow: slowMo, qual, res: [BW, BH] });
 	mount.getSplines = () => JSON.parse(JSON.stringify(bandSplines));
 	// Live editing. reseed:false keeps the running field and lets it migrate to the
 	// new parameters, which is the more informative thing to watch.
@@ -807,11 +816,18 @@ export function mount(els) {
 	}
 
 	let simTime = 0;
-	function stepAll(seed) {
+	function stepAll(seed, reps) {
+		reps = seed ? 1 : Math.max(0, reps | 0);
+		if (!seed && reps === 0) return;
 		// The parameter map is rebuilt every frame from the 3D volume, so the whole
-		// layout drifts. One full-screen pass against 26 substeps of the substrate:
-		// the cost is in the noise, not here.
-		simTime += 1;
+		// layout drifts. One full-screen pass against however many substeps of the
+		// substrate this frame owes: the cost is in the substeps, not here.
+		//
+		// simTime advances by the substeps actually taken, in units of a nominal
+		// frame, so the layout drifts at the same rate as the substrate does and
+		// both are in real time. It used to advance by one per FRAME, which tied the
+		// drift to the refresh rate.
+		simTime += reps / B_SUBSTEPS;
 		gl.useProgram(pLayout);
 		gl.uniform1i(uL.vol, 0); gl.uniform1f(uL.t, simTime);
 		gl.uniform2f(uL.rep, ...layout.repeat); gl.uniform2f(uL.rate, ...layout.rate);
@@ -843,7 +859,6 @@ export function mount(els) {
 		// substep in 26 the edit was simply invisible. The position stays latched
 		// while the ramp decays, so releasing the button lets go rather than cutting.
 		gl.uniform2f(uB.press, !seed && pressRamp > 0.002 ? mouse.px : -1, mouse.py);
-		const reps = seed ? 1 : B_SUBSTEPS;
 		for (let i = 0; i < reps; i++) {
 			bindTo(0, bT[bf]); blit(bF[1 - bf]); bf = 1 - bf;
 		}
@@ -865,11 +880,28 @@ export function mount(els) {
 	// Reduced motion: keep running, but at a sixth of the frame rate. The substrate
 	// steps per FRAME, so this slows the medium as well as the picture.
 	let slowMo = false, nextAt = 0;
-	const SLOW_MS = 1000 / 6;
+	const SLOW_MS = 1000 / 10;
+	// The substrate's rate, in substeps per second of wall clock. 26 x 60 is what
+	// the page did at 60 Hz before this was a rate at all, so nothing about the look
+	// changes on a 60 Hz display -- only its dependence on the display.
+	const STEPS_PER_SEC = B_SUBSTEPS * 60;
+	// SPEED is playback: how much of the medium's own time passes per second of
+	// yours. It is NOT the time step -- dt changes the dynamics the integrator is
+	// approximating, and a smaller one is a different trajectory, not the same one
+	// watched slowly. This is the same trajectory watched slowly.
+	const stepRate = () => STEPS_PER_SEC * cursor.speed * (slowMo ? 1 / 6 : 1);
+	// The most one frame may take, scaled with the speed so asking for more than
+	// full rate can actually be delivered. Anything at or above 30 fps reaches the
+	// rate asked for; below that the medium slows rather than stuttering.
+	const maxReps = () => Math.ceil(B_SUBSTEPS * 2 * Math.max(1, cursor.speed));
+	let owed = 0;
+	let fps = 0, sps = 0, fpsAcc = 0, fpsN = 0, stepAcc = 0, lowFor = 0;
 
 	function frame() {
 		raf = 0;
 		if (slowMo) {
+			// Fewer frames as well as fewer steps: there is no point redrawing at
+			// 120 Hz a picture that is deliberately barely moving.
 			const t = performance.now();
 			if (t < nextAt) {
 				if (running && !document.hidden) raf = requestAnimationFrame(frame);
@@ -887,9 +919,40 @@ export function mount(els) {
 		const want = mouse.active ? 1 : 0;
 		pressRamp += (want - pressRamp) * (1 - Math.exp(-dtSec / Math.max(0.02, cursor.pushTime)));
 		if (!mouse.active && pressRamp < 0.002) { pressRamp = 0; mouse.px = -1; mouse.py = -1; }
-		if (seedNext) { stepAll(true); seedNext = false; }
-		stepAll(false);
+		if (seedNext) { stepAll(true); seedNext = false; owed = 0; }
+
+		// THE SUBSTRATE ADVANCES IN REAL TIME, not per frame. It used to take a fixed
+		// 26 substeps every frame, which made the rate of evolution a property of the
+		// display: a 120 Hz phone ran the medium twice as fast as a 60 Hz laptop, and
+		// a laptop dropping to 20 fps ran it three times slower again AND in visibly
+		// bigger jumps. Now each frame takes the substeps the elapsed time owes.
+		//
+		// The surplus past MAX_REPS is DROPPED, not banked. Banking it would have a
+		// machine that cannot keep up accumulate debt it can only repay in bursts,
+		// which is the stutter it was meant to fix; dropping it means such a machine
+		// simply runs slow, smoothly, which is the honest failure.
+		owed += dtSec * stepRate();
+		let reps = Math.floor(owed);
+		const cap = maxReps();
+		if (reps > cap) { reps = cap; owed = 0; } else { owed -= reps; }
+		stepAll(false, reps);
 		present();
+
+		// A running estimate of both rates, for the panel. Neither is knowable from
+		// outside the loop and the pair is the answer to "why is it different here".
+		fpsAcc += dtSec; fpsN++; stepAcc += reps;
+		if (fpsAcc >= 0.5) {
+			fps = fpsN / fpsAcc; sps = stepAcc / fpsAcc;
+			fpsAcc = 0; fpsN = 0; stepAcc = 0;
+			// Below 30 fps the cap on substeps per frame starts to bite and the
+			// medium runs slow. Rather than leave it slow, buy frames with
+			// resolution -- twice, and then stop and accept what is left. Not while
+			// deliberately slowed: few frames is the POINT there.
+			if (!slowMo && fps > 0 && fps < 26 && qual > 0.56) {
+				lowFor += 0.5;
+				if (lowFor >= 3) { qual = qual > 0.8 ? 0.75 : 0.55; lowFor = 0; pendingResize = true; }
+			} else lowFor = 0;
+		}
 		if (running && !document.hidden) raf = requestAnimationFrame(frame);
 	}
 	const kick = () => {
