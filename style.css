@@ -1,20 +1,21 @@
 /*
 	vilhelmcarlstrom.com — the holding page.
 
-	The palette is the feed's: see Strategic/Outreach/assets/colourmap.py, which
-	builds and validates the ramp. The two ends of that ramp are the page's ground
-	and its brightest text, so the page and the field it sits on are one system.
+	Ground and text are the two ends of batlowK, the field's colour map, so the page
+	and the field it sits on are one system. The map itself is Crameri's, not ours —
+	identity belongs in the interface, not in the data ramp. See
+	Strategic/Outreach/assets/colourmap.py for the diagnostics.
 */
 
 :root {
-	--ground: #011520;
-	--text: #f4ebd1;
+	--ground: #04050a;
+	--text: #f3ece6;
 	--body: #cfd3cc;
 	--muted: #8d968f;
 	--faint: #5f6a64;
-	--rule: #123338;
-	--link: #7eb06c;
-	--link-hover: #bbca89;
+	--rule: #20384e;
+	--link: #e8a266;
+	--link-hover: #fcb3af;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
@@ -33,9 +34,9 @@ body {
 #scrim {
 	position: fixed; inset: 0; z-index: 1; pointer-events: none;
 	background:
-		linear-gradient(100deg, rgba(1,21,32,0.94) 0%, rgba(1,21,32,0.87) 30%, rgba(1,21,32,0.34) 62%, rgba(1,21,32,0.06) 100%),
-		radial-gradient(70% 55% at 100% 100%, rgba(1,21,32,0.72) 0%, rgba(1,21,32,0) 70%),
-		radial-gradient(120% 90% at 8% 40%, rgba(1,21,32,0.55) 0%, rgba(1,21,32,0) 60%);
+		linear-gradient(100deg, rgba(4,5,10,0.94) 0%, rgba(4,5,10,0.87) 30%, rgba(4,5,10,0.34) 62%, rgba(4,5,10,0.06) 100%),
+		radial-gradient(70% 55% at 100% 100%, rgba(4,5,10,0.72) 0%, rgba(4,5,10,0) 70%),
+		radial-gradient(120% 90% at 8% 40%, rgba(4,5,10,0.55) 0%, rgba(4,5,10,0) 60%);
 }
 
 main {
@@ -70,9 +71,16 @@ h1 {
 .record { display: flex; flex-direction: column; gap: 11px; margin: 0; font-size: 13px; line-height: 1.55; }
 .row { display: flex; gap: 18px; }
 .row dt { color: var(--faint); width: 96px; flex-shrink: 0; }
-.row dd { margin: 0; color: #b9beb7; }
+.row dd { margin: 0; color: #b9beb7; text-wrap: pretty; }
+.row dd b { font-weight: 500; color: var(--text); }
 
 a { color: var(--link); text-decoration: none; }
+
+/* The whole citation is the link. Colouring all of it like a link would make the
+   row shout; it takes the link colour only on hover, and keeps the underline
+   affordance where the pointer is. */
+.row dd a.cite { color: inherit; }
+.row dd a.cite:hover, .row dd a.cite:focus-visible { color: var(--link-hover); }
 a:hover, a:focus-visible { color: var(--link-hover); text-decoration: underline; text-underline-offset: 3px; }
 em { font-family: Newsreader, Georgia, serif; font-style: italic; }
 
@@ -80,22 +88,22 @@ footer {
 	position: fixed; z-index: 2; right: clamp(16px, 3vw, 34px); bottom: clamp(14px, 2.4vw, 26px);
 	display: flex; align-items: center; gap: 14px;
 	font-size: 11px; line-height: 1.6; letter-spacing: 0.04em;
-	color: rgba(244,235,209,0.62); text-align: right;
-	background: rgba(1,21,32,0.66); backdrop-filter: blur(7px);
+	color: rgba(243,236,230,0.62); text-align: right;
+	background: rgba(4,5,10,0.66); backdrop-filter: blur(7px);
 	padding: 10px 12px;
 }
 footer p { margin: 0; max-width: 34ch; }
 
-#toggle {
-	font: inherit; letter-spacing: 0.04em; color: rgba(244,235,209,0.6);
-	background: transparent; border: 1px solid rgba(244,235,209,0.22);
+footer button {
+	font: inherit; letter-spacing: 0.04em; color: rgba(243,236,230,0.6);
+	background: transparent; border: 1px solid rgba(243,236,230,0.22);
 	padding: 5px 9px; cursor: pointer; white-space: nowrap;
 }
-#toggle:hover, #toggle:focus-visible { color: var(--text); border-color: rgba(244,235,209,0.5); }
+footer button:hover, footer button:focus-visible { color: var(--text); border-color: rgba(243,236,230,0.5); }
 
 @media (max-width: 720px) {
 	main { align-items: flex-end; padding-bottom: 190px; }
-	#scrim { background: linear-gradient(180deg, rgba(1,21,32,0.30) 0%, rgba(1,21,32,0.86) 42%, rgba(1,21,32,0.97) 100%); }
+	#scrim { background: linear-gradient(180deg, rgba(4,5,10,0.30) 0%, rgba(4,5,10,0.86) 42%, rgba(4,5,10,0.97) 100%); }
 	footer { left: clamp(16px, 3vw, 34px); justify-content: space-between; }
 	.row { flex-direction: column; gap: 3px; }
 	.row dt { width: auto; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }

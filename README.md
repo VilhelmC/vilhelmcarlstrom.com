@@ -1,10 +1,11 @@
 # vilhelmcarlstrom.com
 
-The holding page. Four files, no build step, no framework, no blog.
+The holding page. Five files, no build step, no framework, no blog.
 
 	index.html	the page
 	style.css	the palette is the feed's; see ../assets/colourmap.py
 	field.js	the background, behind one mount() call — the swap point
+	panel.js	the controls, hidden until asked for; injects its own CSS
 	og.jpg		the link preview card, rendered by ../assets/render.py
 
 Decided in `../Outreach-Strategy.md` §4 D3 and `../Online-Presence.md`: this is an
@@ -26,6 +27,11 @@ Step by step, with every field named, in `DEPLOY.md`.
 
 Edit the files; push; Netlify redeploys. The record is the only thing expected to
 change, and it changes rarely.
+
+`panel.js` is optional in the strict sense: remove the second `import` from
+`index.html` and the page is the page, without controls. It reaches the field only
+through `field.js`'s own setters, so it holds no copy of any default and cannot
+drift from what the field is running.
 
 `field.js` is deliberately one module behind one entry point. When `nabla-wasm` can
 compile and run a `.nabla` graph in a browser — see

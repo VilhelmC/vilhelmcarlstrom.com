@@ -39,7 +39,7 @@
 		<dl class="record">
 			<div class="row">
 				<dt>Publication</dt>
-				<dd>Carlström, Rigobello &amp; Ayres (2024), <em>Research Directions: Biotechnology Design</em> · <a href="https://doi.org/10.1017/btd.2024.10">doi</a></dd>
+				<dd><a class="cite" href="https://doi.org/10.1017/btd.2024.10">Carlström, Rigobello &amp; Ayres (2024), &ldquo;Modelling of morphogenesis to support the design of fungal-based engineered living materials&rdquo;, <em>Research Directions: Biotechnology Design</em> <b>2</b>, e11</a></dd>
 			</div>
 			<div class="row">
 				<dt>Record</dt>
@@ -48,8 +48,9 @@
 			</div>
 			<div class="row">
 				<dt>Elsewhere</dt>
-				<dd><a href="https://instagram.com/vilhelmc">Instagram</a> · <a href="https://www.linkedin.com/in/vilhelmcarlstrom/">LinkedIn</a></dd>
-				<!-- Check the LinkedIn slug matches the one set in your profile settings. -->
+				<dd><a href="https://instagram.com/vilhelmc">Instagram</a> · <a href="https://www.linkedin.com/in/vilhelm-carlstr%C3%B6m-006766a5/">LinkedIn</a></dd>
+				<!-- This is the auto-generated slug, ö and all. Set a custom one in LinkedIn
+				     (Edit public profile & URL) to /in/vilhelmcarlstrom, then change it here. -->
 			</div>
 			<div class="row">
 				<dt>Contact</dt>
@@ -60,18 +61,22 @@
 </main>
 
 <footer>
-	<p id="caption">A growth field under projected inhibition, running live. Control gain varies across the screen, controller response time down it. The cursor plants growth.</p>
+	<p id="caption">A Gray–Scott medium whose rate constants are set per pixel by two drifting noise fields, read against a band fitted by hand to the measured pattern region. Hover swells the local diffusivities; hold the button and that patch is driven to one chosen point of the band, settling on a single regime while the rest goes on moving.</p>
+	<button id="copy" type="button">Copy image</button>
 	<button id="toggle" type="button" aria-pressed="false">Pause</button>
 </footer>
 
 <script type="module">
 	import { mount } from "./field.js";
+	import { panel } from "./panel.js";
 	mount({
 		canvas: document.getElementById("field"),
 		scrim: document.getElementById("scrim"),
 		toggle: document.getElementById("toggle"),
+		copy: document.getElementById("copy"),
 		caption: document.getElementById("caption"),
 	});
+	panel(mount);
 </script>
 </body>
 </html>
