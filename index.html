@@ -61,9 +61,14 @@
 </main>
 
 <footer>
-	<p id="caption">A Gray–Scott medium whose rate constants are set per pixel by two drifting noise fields, read against a band fitted by hand to the measured pattern region. Hover swells the local diffusivities; hold the button and that patch is driven to one chosen point of the band, settling on a single regime while the rest goes on moving.</p>
-	<button id="copy" type="button">Copy image</button>
-	<button id="toggle" type="button" aria-pressed="false">Pause</button>
+	<div id="about" hidden>
+		<p id="caption">A Gray–Scott medium whose rate constants are set per pixel by two drifting noise fields, read against a band fitted by hand to the measured pattern region. Move the pointer to swell the local diffusivities; press and hold to drive that patch to one chosen point of the band, where it settles on a single regime while the rest goes on moving.</p>
+		<button id="copy" type="button">Copy image</button>
+	</div>
+	<div id="bar">
+		<button id="help" type="button" aria-expanded="false" aria-controls="about" aria-label="About this background">?</button>
+		<button id="toggle" type="button" aria-pressed="false">Pause</button>
+	</div>
 </footer>
 
 <script type="module">
@@ -77,6 +82,15 @@
 		caption: document.getElementById("caption"),
 	});
 	panel(mount);
+
+	// The explanation is not what the page is for, so it starts closed.
+	const about = document.getElementById("about"), help = document.getElementById("help");
+	if (about && help) help.addEventListener("click", () => {
+		const open = about.hidden;
+		about.hidden = !open;
+		help.setAttribute("aria-expanded", String(open));
+		help.textContent = open ? "×" : "?";
+	});
 </script>
 </body>
 </html>

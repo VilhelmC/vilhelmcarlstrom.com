@@ -11,7 +11,7 @@
 const KEY = "vc.field.v1";
 
 const CSS = `
-#fp-open { position:fixed; left:14px; bottom:14px; z-index:40;
+#fp-open { position:fixed; right:14px; top:14px; z-index:40;
 	font:400 11px/1 "IBM Plex Mono", ui-monospace, monospace; letter-spacing:.12em;
 	text-transform:uppercase; color:rgba(243,236,230,.62); background:rgba(8,10,18,.55);
 	border:1px solid rgba(243,236,230,.2); padding:8px 11px; cursor:pointer;
@@ -67,6 +67,13 @@ const CSS = `
    rather than hide it: it is the one line that says what is being looked at. */
 body[data-fp="1"] footer { right:min(398px, calc(94vw + 14px)); transition:right .26s cubic-bezier(.4,0,.2,1); }
 footer { transition:right .26s cubic-bezier(.4,0,.2,1); }
+/* The light page needs its own version of the two corner controls. */
+body.lit #about { background:rgba(249,248,244,.80); color:rgba(20,22,28,.78); }
+body.lit footer { color:rgba(20,22,28,.7); }
+body.lit footer button { color:rgba(20,22,28,.7); background:rgba(249,248,244,.74);
+	border-color:rgba(20,22,28,.22); }
+body.lit #fp-open { color:rgba(20,22,28,.7); background:rgba(249,248,244,.7);
+	border-color:rgba(20,22,28,.22); }
 /* Lifting the tone above zero lights the field, and dark text on a light ground
    needs its own palette -- style.css only carries the dark one. Carried over
    from the old site preview, where the tone slider first needed it. */

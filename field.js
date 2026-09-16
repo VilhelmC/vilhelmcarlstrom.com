@@ -511,7 +511,16 @@ export function mount(els) {
 	// longer differ by how many times one volume is repeated, they differ by having
 	// their own lattice. Wavelength at the base octave is 1/cells of the width; the
 	// finest octave is that divided by lacun^(octaves-1).
-	const noise = { W: VOL_W, D: VOL_D, cells: [7, 7], tcells: 16, octaves: 7,
+	// The volume is built on the CPU, once, and blocks while it happens: at the
+	// desktop size that is around 0.6 s on a laptop and several times that on a
+	// phone, which is the page arriving without its background. A phone also has a
+	// small canvas, so the resolution is wasted there. Half the texels in each
+	// direction and half the slices is an eighth of the work.
+	const SMALL = (typeof window !== "undefined") && (
+		Math.min(window.innerWidth, window.innerHeight) < 640 ||
+		(navigator.hardwareConcurrency || 8) <= 4);
+	const noise = { W: SMALL ? 96 : VOL_W, D: SMALL ? 48 : VOL_D,
+		cells: [7, 7], tcells: 16, octaves: 7,
 		lacun: 1.2, persist: 0.95, flatten: 1.0, ar: 1.5,
 		seeds: [0x1a2b3c4d, 0x5e6f7a8b] };
 	let volT = null, layoutT = null, layoutF = null, bandAT = null, bandBT = null;
@@ -852,6 +861,9 @@ export function mount(els) {
 
 	const reduced = window.matchMedia("(prefers-reduced-motion: reduce)");
 	let running = !reduced.matches, raf = 0, pendingResize = false;
+	// Frames still owed to the reduced-motion settle. Counted down in frame(), which
+	// keeps looping while it is positive even though `running` is false.
+	let settleLeft = 0;
 
 	function frame() {
 		raf = 0;
@@ -868,15 +880,19 @@ export function mount(els) {
 		if (seedNext) { stepAll(true); seedNext = false; }
 		stepAll(false);
 		present();
-		if (running && !document.hidden) raf = requestAnimationFrame(frame);
+		if (settleLeft > 0) settleLeft--;
+		if ((running || settleLeft > 0) && !document.hidden) raf = requestAnimationFrame(frame);
 	}
-	const kick = () => { if (!raf && running && !document.hidden) raf = requestAnimationFrame(frame); };
+	const kick = () => {
+		if (!raf && (running || settleLeft > 0) && !document.hidden) raf = requestAnimationFrame(frame);
+	};
 
 	window.addEventListener("resize", () => { pendingResize = true; kick(); }, { passive: true });
 	document.addEventListener("visibilitychange", kick);
 
 	function setRunning(on) {
 		running = on;
+		if (on) settleLeft = 0;
 		if (toggle) { toggle.textContent = on ? "Pause" : "Run"; toggle.setAttribute("aria-pressed", String(!on)); }
 		if (on) kick();
 	}
@@ -924,10 +940,16 @@ export function mount(els) {
 
 	resize();
 	if (reduced.matches) {
-		stepAll(true); seedNext = false;
-		for (let i = 0; i < 140; i++) stepAll(false);
-		present(); setRunning(false);
-		if (caption) caption.textContent = "A substrate steered by a controller, settled and held still because this browser asks for reduced motion. The controller sets the substrate's rate constants pixel by pixel, so the regimes differ across the frame.";
+		// Settle to a still image, then hold. This used to run 140 steps in ONE
+		// synchronous burst -- 3640 full-screen shader passes before the page could
+		// paint, on top of the volume build. On a phone that is the whole load time,
+		// and the page then arrived paused with no sign that it could be started.
+		// Spread over frames instead: the picture develops in front of you and the
+		// thread is never held.
+		settleLeft = 140;
+		setRunning(false);
+		kick();
+		if (caption) caption.textContent = "A substrate steered by a controller, settling and then held still because this browser asks for reduced motion. Press Run to let it move.";
 	} else { kick(); }
 
 	function fallback() {

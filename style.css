@@ -84,27 +84,35 @@ a { color: var(--link); text-decoration: none; }
 a:hover, a:focus-visible { color: var(--link-hover); text-decoration: underline; text-underline-offset: 3px; }
 em { font-family: Newsreader, Georgia, serif; font-style: italic; }
 
+/* The caption explains the background; it is not what anyone came for, so it
+   lives behind the "?" and the corner holds two small controls instead. */
 footer {
-	position: fixed; z-index: 2; right: clamp(16px, 3vw, 34px); bottom: clamp(14px, 2.4vw, 26px);
-	display: flex; align-items: center; gap: 14px;
+	position: fixed; z-index: 3; right: clamp(16px, 3vw, 34px); bottom: clamp(14px, 2.4vw, 26px);
+	display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
 	font-size: 11px; line-height: 1.6; letter-spacing: 0.04em;
 	color: rgba(243,236,230,0.62); text-align: right;
-	background: rgba(4,5,10,0.66); backdrop-filter: blur(7px);
-	padding: 10px 12px;
 }
-footer p { margin: 0; max-width: 34ch; }
+#about {
+	display: flex; flex-direction: column; align-items: flex-end; gap: 9px;
+	background: rgba(4,5,10,0.72); backdrop-filter: blur(7px); padding: 11px 13px;
+	max-width: min(38ch, calc(100vw - 2 * clamp(16px, 3vw, 34px)));
+}
+#about p { margin: 0; }
+#bar { display: flex; gap: 8px; }
 
 footer button {
-	font: inherit; letter-spacing: 0.04em; color: rgba(243,236,230,0.6);
-	background: transparent; border: 1px solid rgba(243,236,230,0.22);
-	padding: 5px 9px; cursor: pointer; white-space: nowrap;
+	font: inherit; letter-spacing: 0.04em; color: rgba(243,236,230,0.62);
+	background: rgba(4,5,10,0.66); backdrop-filter: blur(7px);
+	border: 1px solid rgba(243,236,230,0.22);
+	padding: 6px 10px; cursor: pointer; white-space: nowrap;
 }
+#help { width: 32px; padding: 6px 0; text-align: center; }
 footer button:hover, footer button:focus-visible { color: var(--text); border-color: rgba(243,236,230,0.5); }
 
 @media (max-width: 720px) {
 	main { align-items: flex-end; padding-bottom: 190px; }
 	#scrim { background: linear-gradient(180deg, rgba(4,5,10,0.30) 0%, rgba(4,5,10,0.86) 42%, rgba(4,5,10,0.97) 100%); }
-	footer { left: clamp(16px, 3vw, 34px); justify-content: space-between; }
+	footer { left: auto; }
 	.row { flex-direction: column; gap: 3px; }
 	.row dt { width: auto; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
 }
