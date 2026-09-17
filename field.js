@@ -532,14 +532,25 @@ export function mount(els) {
 		lacun: 1.2, persist: 0.95, flatten: 1.0, ar: 1.5,
 		seeds: [0x1a2b3c4d, 0x5e6f7a8b] };
 	let volT = null, layoutT = null, layoutF = null, bandAT = null, bandBT = null;
-	let volAR = 0;
+	let volAR = 0, volGrid = 0;
 	function buildVolume() {
 		if (volT) return;
 		// Texels follow the aspect too, so a cell is resolved equally on both axes.
 		const ar = noise.ar;
 		const Wx = noise.W | 0, Wy = Math.max(16, Math.round(Wx / ar)), D = noise.D | 0;
-		const A = volume(Wx, Wy, D, noise.seeds[0], noise, Math.max(1, Math.round(noise.cells[0]))),
-			B = volume(Wx, Wy, D, noise.seeds[1], noise, Math.max(1, Math.round(noise.cells[1])));
+		// The noise lattice is scaled by the grid for the same reason the rate is.
+		// The pattern's wavelength is fixed in TEXELS, so a 164-wide grid shows about
+		// 20 wavelengths across and a 500-wide one about 62. A noise lattice fixed at
+		// 7 across the SCREEN therefore puts about 3 pattern cells in each parameter
+		// blob on a phone and about 9 on a laptop -- and that ratio is what the
+		// picture is made of. Same equations, different composition; scaling the
+		// lattice with the grid keeps the composition and lets the resolution differ,
+		// which is the only difference that should survive between machines.
+		const gs = gridScale();
+		const c0 = Math.max(1, Math.round(noise.cells[0] * gs));
+		const c1 = Math.max(1, Math.round(noise.cells[1] * gs));
+		const A = volume(Wx, Wy, D, noise.seeds[0], noise, c0),
+			B = volume(Wx, Wy, D, noise.seeds[1], noise, c1);
 		// RG, not RGBA: there are two fields, and two of four channels were being
 		// uploaded as padding. At the largest volume on offer that is 9.4 MB on the
 		// GPU rather than 18.9, which matters on a phone.
@@ -551,7 +562,7 @@ export function mount(els) {
 		gl.texParameteri(gl.TEXTURE_3D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
 		for (const a of [gl.TEXTURE_WRAP_S, gl.TEXTURE_WRAP_T, gl.TEXTURE_WRAP_R])
 			gl.texParameteri(gl.TEXTURE_3D, a, gl.REPEAT);
-		volAR = ar;
+		volAR = ar; volGrid = gridScale();
 	}
 	function bandTex(data) {
 		const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
@@ -612,6 +623,10 @@ export function mount(els) {
 		bandAT = bandTex(A); bandBT = bandTex(B);
 	}
 
+	// The reference grid width. Everything that has to look the same across machines
+	// is expressed relative to it: the step rate and the noise lattice both.
+	const BW_REF = 500;
+	const gridScale = () => (BW || BW_REF) / BW_REF;
 	// Resolution quality, 1 = full. Lowered once or twice if the machine cannot hold
 	// a frame rate; the substrate's cost is quadratic in this, so 0.75 is about half
 	// the work. Never raised again: a page that oscillates between two resolutions
@@ -638,6 +653,12 @@ export function mount(els) {
 		const [bw, bh] = dims(bBudget), [aw, ah] = dims(aBudget);
 		if (bw === BW && bh === BH) { buildVolume(); return; }
 		// (a quality change alters bw/bh, so it falls through here by construction)
+		// A materially different grid means a differently scaled noise lattice, so
+		// the volume has to be rebuilt as it does for a changed aspect. 10% either
+		// way, because the lattice count is rounded to an integer anyway.
+		if (volGrid && Math.abs(bw / BW_REF - volGrid) / volGrid > 0.10 && volT) {
+			gl.deleteTexture(volT); volT = null;
+		}
 		BW = bw; BH = bh; AW_ = aw; AH = ah;
 		[...aT, ...bT, ...auxT].forEach(t => gl.deleteTexture(t));
 		[...aF, ...bF, ...auxF].forEach(f => gl.deleteFramebuffer(f));
@@ -726,7 +747,7 @@ export function mount(els) {
 	// Measured, not nominal: frames per second, substeps per second, and the rate
 	// the page would run at on a display fast enough to keep up.
 	mount.rates = () => ({ fps, sps, nominal: stepRate(), qual, res: [BW, BH],
-		grid: gridScale(),
+		grid: gridScale(), lattice: noise.cells.map(c => Math.max(1, Math.round(c * gridScale()))),
 		// Whether the BROWSER is asking for reduced motion, which is a fact about the
 		// browser and stays true whatever the slider has since been moved to.
 		asksReduced: reduced.matches, speed: cursor.speed, defaultSpeed: SPEED0 });
@@ -892,7 +913,11 @@ export function mount(els) {
 	// Reduced motion: keep running, but at a sixth of the frame rate. The substrate
 	// steps per FRAME, so this slows the medium as well as the picture.
 	let slowMo = false, nextAt = 0;
-	const SLOW_MS = 1000 / 10;
+	// Reduced motion is about how much MOTION there is, not how many redraws. At
+	// 10 fps the page was slow AND jerky, which is the worst of both: the step rate
+	// already carries the slowness, so the frame rate only has to be low enough to
+	// save work. 30 is smooth to the eye and still halves the redraws.
+	const SLOW_MS = 1000 / 30;
 	// The substrate's rate, in substeps per second of wall clock. 26 x 60 is what
 	// the page did at 60 Hz before this was a rate at all, so nothing about the look
 	// changes on a 60 Hz display -- only its dependence on the display.
@@ -906,17 +931,15 @@ export function mount(els) {
 	// slider LOWER at startup instead, so there is one number, it is visible, and
 	// moving it overrides the setting the way a person overriding a default should.
 	//
-	// GRID CORRECTION. The pattern's wavelength is fixed in TEXELS -- about eight --
-	// so on a 275-wide grid a feature is nearly twice the fraction of the screen it
-	// is on a 500-wide one, and its characteristic time is a fixed number of
-	// substeps either way. The same substeps per second therefore carries a feature
-	// across twice as much screen: a coarse grid READS AS FASTER even though nothing
-	// about the medium changed. That is why the more capable machine looked slower
-	// than the phone -- it was the only one keeping a fine grid. Rate is scaled by
-	// the grid so apparent speed, which is what anyone actually judges, matches.
-	const BW_REF = 500;
-	const gridScale = () => (BW || BW_REF) / BW_REF;
-	const stepRate = () => STEPS_PER_SEC * cursor.speed * gridScale();
+	// The rate is NOT scaled by the grid, and briefly was, which was wrong. The
+	// argument for scaling it was that a coarse grid puts bigger features on the
+	// screen -- but the grid budget and the canvas shrink together, so a texel is
+	// about 2.4 screen pixels on a phone against 2.8 on a laptop, and a feature is
+	// around twenty pixels on both. A feature's characteristic time is a fixed
+	// number of substeps on any grid, so equal substeps per second IS equal apparent
+	// speed. Substeps per second is the medium's own clock, shared between machines;
+	// the grid only decides how much of the medium fits in the window.
+	const stepRate = () => STEPS_PER_SEC * cursor.speed;
 	// The most one frame may take, scaled with the speed so asking for more than the
 	// default rate can actually be delivered. At three nominal frames' worth, the
 	// DEFAULT rate is reachable by anything holding 10 fps -- which is the point:

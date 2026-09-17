@@ -583,11 +583,13 @@ export function panel(field) {
 			+ (r.defaultSpeed / 6).toFixed(3) + " rather than " + r.defaultSpeed
 			+ " — a sixth. That is a browser setting, not the hardware, and it is the"
 			+ " usual reason two machines disagree. The slider overrides it.";
-		out += "<br>The pattern's wavelength is fixed in grid cells, so a coarser grid puts"
-			+ " bigger features on the screen and the same rate carries them further per second."
-			+ " The rate is scaled by the grid to compensate — here by <b>"
-			+ r.grid.toFixed(2) + "×</b> — so that two machines with different grids still"
-			+ " look the same speed. Compare <b>speed</b> between machines; the rest follows.";
+		out += "<br><b>substeps/s</b> is the medium's own clock: a feature's characteristic"
+			+ " time is a fixed number of substeps on any grid, so two machines showing the"
+			+ " same number are running it at the same rate. The grid decides how much of the"
+			+ " medium fits in the window, and the noise lattice is scaled with it — here <b>"
+			+ (r.lattice ? r.lattice.join(" × ") : "?") + "</b> cells across, from a grid of <b>"
+			+ r.grid.toFixed(2) + "×</b> the reference — so the same number of pattern cells"
+			+ " sits in each parameter region and the composition matches.";
 		$("fp-rate").innerHTML = out;
 	}, 600);
 
